@@ -49,7 +49,10 @@ namespace TransactionPOC.WebApi.Interceptors
             }
             finally
             {
-                scope.Dispose();
+                if (useTx)
+                {
+                    scope.Dispose();
+                }
             }
         }
     }
