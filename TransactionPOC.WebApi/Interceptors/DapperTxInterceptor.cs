@@ -1,4 +1,5 @@
 ﻿using Castle.DynamicProxy;
+using System.Data;
 using System.Linq;
 using System.Reflection;
 using TransactionPOC.Core.Data;
@@ -19,27 +20,33 @@ namespace TransactionPOC.WebApi.Interceptors
         public void Intercept(IInvocation invocation)
         {
             TransactionAttribute txAttribute = invocation.MethodInvocationTarget.GetCustomAttributes(true).FirstOrDefault(attr => attr is TransactionAttribute) as TransactionAttribute;
-            if (txAttribute == null)
-            {
-                return;
-            }
+            var useTx = (txAttribute != null);
+            IDbTransaction tx = null;
 
             UnitOfWork unitOfWork = ObjectFactory.Current.Resolve<UnitOfWork>();
             var conn = unitOfWork.GetConnection();
             conn.Open();
 
-            var tx = unitOfWork.Transaction = conn.BeginTransaction();
-            try
-            {
+            if (useTx) {
+                tx = unitOfWork.Transaction = conn.BeginTransaction();
                 Logger.LogInfo("Transaction created");
+            }
+            try
+            {   
                 invocation.Proceed();
-                tx.Commit();
-                Logger.LogInfo("Transaction committed");
+                if (useTx)
+                {
+                    tx.Commit();
+                    Logger.LogInfo("Transaction committed");
+                }
             }
             catch
             {
-                tx.Rollback();
-                Logger.LogInfo("Transaction rolled back");
+                if (useTx)
+                {
+                    tx.Rollback();
+                    Logger.LogInfo("Transaction rolled back");
+                }
                 throw;
             }
             finally

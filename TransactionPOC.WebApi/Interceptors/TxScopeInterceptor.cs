@@ -18,26 +18,33 @@ namespace TransactionPOC.WebApi.Interceptors
         public void Intercept(IInvocation invocation)
         {
             TransactionAttribute txAttribute = invocation.MethodInvocationTarget.GetCustomAttributes(true).FirstOrDefault(attr => attr is TransactionAttribute) as TransactionAttribute;
-            if (txAttribute == null)
-            {
-                return;
-            }
+            var useTx = (txAttribute != null);
+            TransactionScope scope = null;
 
-            var scope = new TransactionScope(TransactionScopeOption.Required,
-                new TransactionOptions
-                {
-                    IsolationLevel = IsolationLevel.ReadCommitted,
-                });
-            try
+            if (useTx)
             {
+                scope = new TransactionScope(TransactionScopeOption.Required,
+                    new TransactionOptions
+                    {
+                        IsolationLevel = IsolationLevel.ReadCommitted,
+                    });
                 Logger.LogInfo("Transaction created");
+            }
+            try
+            {                
                 invocation.Proceed();
-                scope.Complete();
-                Logger.LogInfo("Transaction committed");
+                if (useTx)
+                {
+                    scope.Complete();
+                    Logger.LogInfo("Transaction committed");
+                }
             }
             catch
             {
-                Logger.LogInfo("Transaction rolled back");
+                if (useTx)
+                {
+                    Logger.LogInfo("Transaction rolled back");
+                }
                 throw;
             }
             finally
