@@ -21,40 +21,33 @@ namespace TransactionPOC.WebApi.Interceptors
         {
             TransactionAttribute txAttribute = invocation.MethodInvocationTarget.GetCustomAttributes(true).FirstOrDefault(attr => attr is TransactionAttribute) as TransactionAttribute;
             var useTx = (txAttribute != null);
-            IDbTransaction tx = null;
 
+            if (!useTx) {
+                invocation.Proceed();
+                return;
+            }
+            
             UnitOfWork unitOfWork = ObjectFactory.Current.Resolve<UnitOfWork>();
             var conn = unitOfWork.GetConnection();
             conn.Open();
 
-            if (useTx) {
-                tx = unitOfWork.Transaction = conn.BeginTransaction();
-                Logger.LogInfo("Transaction created");
-            }
+            IDbTransaction tx = unitOfWork.Transaction = conn.BeginTransaction();
+            Logger.LogInfo("Transaction created");
             try
             {   
                 invocation.Proceed();
-                if (useTx)
-                {
-                    tx.Commit();
-                    Logger.LogInfo("Transaction committed");
-                }
+                tx.Commit();
+                Logger.LogInfo("Transaction committed");
             }
             catch
             {
-                if (useTx)
-                {
-                    tx.Rollback();
-                    Logger.LogInfo("Transaction rolled back");
-                }
+                tx.Rollback();
+                Logger.LogInfo("Transaction rolled back");
                 throw;
             }
             finally
             {
-                if (useTx)
-                {
-                    tx.Dispose();
-                }
+                tx.Dispose();
             }
         }
     }

@@ -35,8 +35,8 @@ namespace TransactionPOC.WebApi.IoC
             var interceptors =
                 new IInterceptor[]
                 {
-                    //new TxScopeInterceptor(),
-                    new DapperTxInterceptor(),
+                    new TxScopeInterceptor(),
+                    //new DapperTxInterceptor(),
                 };
 
             ProxyGenerator proxyGenerator = new ProxyGenerator();
